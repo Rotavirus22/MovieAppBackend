@@ -128,9 +128,47 @@ const getMoviesByGenre = async (req, res) => {
   }
 };
 
+
+const searchMovies = async (req, res) => {
+  const { query } = req.query; 
+  if (!query) {
+    return res.status(400).json({ error: "Search query is required" });
+  }
+
+  try {
+    const response = await tmdbClient.get("search/movie", {
+      params: {
+        query: query,
+        page: req.query.page || 1,
+      },
+    });
+    const moviesWithEmbed = await Promise.all(
+      response.data.results.map(async (movie) => {
+        try {
+          const movieDetails = await tmdbClient.get(`movie/${movie.id}`, {
+            params: { append_to_response: "external_ids" },
+          });
+          const imdbId = movieDetails.data.imdb_id;
+          return {
+            ...movie,
+            embedUrl: imdbId ? constructEmbedUrl(imdbId) : null,
+          };
+        } catch (error) {
+          return { ...movie, embedUrl: null };
+        }
+      })
+    );
+
+    res.json({ ...response.data, results: moviesWithEmbed });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to search movies", details: error.message });
+  }
+};
+
 module.exports = {
   getPopularMovies,
   getUpcomingMovies,
   getNowPlayingMovies,
   getMoviesByGenre,
+  searchMovies
 };
