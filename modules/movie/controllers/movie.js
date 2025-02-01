@@ -165,10 +165,36 @@ const searchMovies = async (req, res) => {
   }
 };
 
+const getSingleMovies = async (req, res) => {
+  const { movieId } = req.params;
+
+  if (!movieId) {
+    return res.status(400).json({ error: "Movie ID is required" });
+  }
+
+  try {
+    const response = await tmdbClient.get(`movie/${movieId}`, {
+      params: { append_to_response: "external_ids" }, 
+    });
+
+    const imdbId = response.data.external_ids?.imdb_id;
+    const movieWithEmbed = {
+      ...response.data,
+      embedUrl: imdbId ? constructEmbedUrl(imdbId) : null,
+    };
+
+    res.json(movieWithEmbed);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch movie details", details: error.message });
+  }
+};
+
+
 module.exports = {
   getPopularMovies,
   getUpcomingMovies,
   getNowPlayingMovies,
   getMoviesByGenre,
-  searchMovies
+  searchMovies,
+  getSingleMovies
 };
